@@ -75,6 +75,7 @@ dependencies = [gtk, gtk_layer_shell, pulse, wayland_client]
 if get_option('WithHyprland')
   add_global_arguments('-DWITH_HYPRLAND', language: 'cpp')
   headers += 'src/Workspaces.h'
+  dependencies += dependency('jsoncpp')
 endif
 if get_option('WithWorkspaces')
   add_global_arguments('-DWITH_WORKSPACES', language: 'cpp')

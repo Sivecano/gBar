@@ -2,6 +2,7 @@
 #include "Wayland.h"
 #include <ext-workspace-unstable-v1.h>
 #include <unordered_map>
+#include "json/reader.h"
 
 #ifdef WITH_WORKSPACES
 namespace Workspaces
@@ -194,58 +195,35 @@ namespace Workspaces
             workspaceStati.resize(numWorkspaces, System::WorkspaceStatus::Dead);
             maxUsedWorkspace = 0;
 
-            size_t parseIdx = 0;
+            Json::Reader reader;
             // First parse workspaces
-            std::string workspaces = DispatchIPC("/workspaces");
-            while ((parseIdx = workspaces.find("workspace ID ", parseIdx)) != std::string::npos)
-            {
-                // Advance two spaces
-                size_t begWSNum = workspaces.find(' ', parseIdx) + 1;
-                begWSNum = workspaces.find(' ', begWSNum) + 1;
-                size_t endWSNum = workspaces.find(' ', begWSNum);
+            Json::Value workspaces;
+            reader.parse(DispatchIPC("j/workspaces"), workspaces);
 
-                std::string ws = workspaces.substr(begWSNum, endWSNum - begWSNum);
-                int32_t wsId = std::atoi(ws.c_str());
+            for (auto ws : workspaces)
+            {
+                int32_t wsId = ws["id"].asInt();
                 if (wsId >= 1 && wsId <= (int32_t)numWorkspaces)
                 {
                     // WS is at least inactive
                     workspaceStati[wsId - 1] = System::WorkspaceStatus::Inactive;
                 }
-                // Update maxUsedWorkspace
                 if (wsId > 0 && (uint32_t)wsId > maxUsedWorkspace)
                     maxUsedWorkspace = wsId;
-                parseIdx = endWSNum;
             }
 
             // Parse active workspaces for monitor
-            std::string monitors = DispatchIPC("/monitors");
-            parseIdx = 0;
-            while ((parseIdx = monitors.find("Monitor ", parseIdx)) != std::string::npos)
+            Json::Value monitors;
+            reader.parse(DispatchIPC("j/monitors"), monitors);
+            for (auto mon : monitors)
             {
-                // Query monitor name
-                // Format: Monitor <name> (ID <id>)
-                size_t begMonNum = monitors.find(' ', parseIdx) + 1;
-                size_t endMonNum = monitors.find(' ', begMonNum);
-                std::string mon = monitors.substr(begMonNum, endMonNum - begMonNum);
-
-                // Parse active workspace
-                parseIdx = monitors.find("active workspace: ", parseIdx);
-                ASSERT(parseIdx != std::string::npos, "Invalid IPC response!");
-                size_t begWSNum = monitors.find('(', parseIdx) + 1;
-                size_t endWSNum = monitors.find(')', begWSNum);
-                std::string ws = monitors.substr(begWSNum, endWSNum - begWSNum);
-                int32_t wsId = std::atoi(ws.c_str());
-
-                // Check if focused
-                parseIdx = monitors.find("focused: ", parseIdx);
-                ASSERT(parseIdx != std::string::npos, "Invalid IPC response!");
-                size_t begFocused = monitors.find(' ', parseIdx) + 1;
-                size_t endFocused = monitors.find('\n', begFocused);
-                bool focused = std::string_view(monitors).substr(begFocused, endFocused - begFocused) == "yes";
+                std::string name = mon["name"].asString();
+                int32_t wsId = mon["activeWorkspace"]["id"].asInt();
+                bool focused = mon["focused"].asBool();
 
                 if (wsId >= 1 && wsId <= (int32_t)numWorkspaces)
                 {
-                    if (mon == monitor)
+                    if (name == monitor)
                     {
                         if (focused)
                         {

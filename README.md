@@ -7,6 +7,7 @@ My personal blazingly fast and efficient status bar + widgets, in case anyone fi
 *If you don't have the optional dependencies, some features are not available.*
 - wayland
 - Hyprland(Optional -> For workspaces widget)
+- jsoncpp(Optional -> only needed for Hyprland IPC)
 - nvidia-utils(Optional -> For Nvidia GPU status)
 - bluez(Optional -> For Bluetooth status)
 - GTK 3.0
