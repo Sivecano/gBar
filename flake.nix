@@ -31,6 +31,7 @@
           libpulseaudio
           libdbusmenu-gtk3
           libsass
+          jsoncpp
         ];
       });
     in {
