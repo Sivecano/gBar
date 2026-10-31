@@ -32,21 +32,42 @@ namespace Workspaces
             LOG("Error: Called Go to workspace, but Workspaces isn't open!");
             return;
         }
-        LOG("Switching workspace: hyprctl dispatch workspace " << workspace);
-        system(("hyprctl dispatch workspace " + std::to_string(workspace)).c_str());
+        std::string cmd = "hyprctl dispatch 'hl.dsp.focus({ workspace = \""
+            + std::to_string(workspace) + "\" })'";
+
+        LOG("Switching workspace: " + cmd);
+        system(cmd.c_str());
     }
 
     // direction: + or -
     inline void GotoNext(char direction)
     {
-        char scrollOp = 'e';
+        if (RuntimeConfig::Get().hasWorkspaces == false)
+        {
+            return;
+        }
+
+        // Modern Hyprland expects "e+1" or "e-1" to target existing workspaces
+        std::string target = "e" + std::string(1, direction) + "1";
+
         if (Config::Get().workspaceScrollOnMonitor)
         {
-            scrollOp = 'm';
+            // Fix: Use "e+1" combined with the monitor_bound boolean flag
+            std::string cmd = "hyprctl dispatch 'hl.dsp.focus({ workspace = \""
+                + target + "\", monitor_bound = true })'";
+            LOG(" Scrolling non-empty workspaces (monitor bound): "
+                << cmd.c_str());
+            system(cmd.c_str());
         }
-        std::string cmd = std::string("hyprctl dispatch workspace ") + scrollOp + direction + "1";
-        LOG("Switching workspace: " << cmd.c_str());
-        system(cmd.c_str());
+        else
+        {
+            // Global non-empty workspace scroll
+            std::string cmd = "hyprctl dispatch 'hl.dsp.focus({ workspace = \""
+                + target + "\" })'";
+            LOG(" Scrolling non-empty workspaces globally: " << cmd.c_str());
+            system(cmd.c_str());
+        }
     }
+
 }
 #endif
