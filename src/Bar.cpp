@@ -4,8 +4,8 @@
 #include "Common.h"
 #include "Config.h"
 #include "SNI.h"
+#include <mpd/client.h>
 #include <mutex>
-#include <cstdlib>
 
 namespace Bar
 {
@@ -121,6 +121,70 @@ namespace Bar
                 if (batteryText)
                     batteryText->RemoveClass("battery-warning");
             }
+            return TimerResult::Ok;
+        }
+
+        static TimerResult UpdateMPD(Text& text)
+        {
+            mpd_connection* connection = mpd_connection_new(nullptr, 0, 3000);
+            if (!connection)
+            {
+                text.SetVisible(false);
+                return TimerResult::Ok;
+            }
+
+            struct mpd_status *status;
+            enum mpd_state state;
+            status = mpd_run_status(connection);
+            if (!status) {
+                mpd_connection_free(connection);
+                text.SetVisible(false);
+                return TimerResult::Ok;
+            }
+
+            state = mpd_status_get_state(status);
+            mpd_status_free(status);
+            if (state != MPD_STATE_PLAY) {
+                mpd_connection_free(connection);
+                text.SetVisible(false);
+                return TimerResult::Ok;
+            }
+
+            mpd_song* song = mpd_run_current_song(connection);
+            if (!song)
+            {
+                mpd_connection_free(connection);
+                text.SetVisible(false);
+                return TimerResult::Ok;
+            }
+
+            const char* artist = mpd_song_get_tag(song, MPD_TAG_ARTIST, 0);
+            const char* title = mpd_song_get_tag(song, MPD_TAG_TITLE, 0);
+            std::string track;
+            if (artist && *artist)
+                track = artist;
+            if (title && *title)
+            {
+                if (!track.empty())
+                    track += " - ";
+                track += title;
+            }
+            mpd_song_free(song);
+            mpd_connection_free(connection);
+
+            if (track.empty())
+            {
+                text.SetVisible(false);
+                return TimerResult::Ok;
+            }
+
+            text.SetTooltip(track); // set tooltip before shortening
+            const size_t maxLength = Config::Get().maxTitleLength;
+            if (maxLength > 3 && track.size() > maxLength)
+                track = track.substr(0, maxLength - 3) + "...";
+            text.SetText("♫ " + track);
+
+            text.SetVisible(true);
             return TimerResult::Ok;
         }
 
@@ -1162,6 +1226,18 @@ namespace Bar
         parent.AddChild(std::move(title));
     }
 
+    void WidgetMPD(Widget& parent, Side side)
+    {
+        auto mpd = Widget::Create<Text>();
+        Utils::SetTransform(*mpd, {-1, false, SideToAlignment(side)});
+        mpd->SetAngle(Utils::GetAngle());
+        mpd->SetClass("widget");
+        mpd->AddClass("mpd-text");
+        mpd->SetVisible(false);
+        mpd->AddTimer<Text>(DynCtx::UpdateMPD, 1000);
+        parent.AddChild(std::move(mpd));
+    }
+
     void ChooseWidgetToDraw(const std::string& widgetName, Widget& parent, Side side)
     {
         if (widgetName == "Workspaces")
@@ -1182,6 +1258,11 @@ namespace Bar
         if (widgetName == "Title")
         {
             WidgetTitle(parent, side);
+            return;
+        }
+        if (widgetName == "MPD")
+        {
+            WidgetMPD(parent, side);
             return;
         }
         if (widgetName == "Tray")
@@ -1266,7 +1347,7 @@ namespace Bar
         }
         LOG("Warning: Unkwown widget name " << widgetName << "!"
                                             << "\n\tKnown names are: Workspaces, Time, Tray, Packages, Audio, Bluetooth, Network, Sensors, Disk, "
-                                               "VRAM, GPU, RAM, CPU, Battery, Power, Title");
+                                               "VRAM, GPU, RAM, CPU, Battery, Power, Title, MPD");
     }
 
     void Create(Window& window, const std::string& monitorName)
