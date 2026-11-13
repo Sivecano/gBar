@@ -27,7 +27,7 @@ WidgetsLeft: [Workspaces]
 # Widgets to center
 WidgetsCenter: [Time]
 # Widgets to display on the right side
-WidgetsRight: [Tray, Packages, Audio, Bluetooth, Network, Disk, VRAM, GPU, RAM, CPU, Battery, Power]
+WidgetsRight: [MPD, Tray, Packages, Audio, Bluetooth, Network, Disk, VRAM, GPU, RAM, CPU, Battery, Power]
 
 # The CPU sensor to use
 CPUThermalZone: /sys/devices/pci0000:00/0000:00:18.3/hwmon/hwmon2/temp1_input

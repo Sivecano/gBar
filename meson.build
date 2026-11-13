@@ -36,6 +36,7 @@ gtk = dependency('gtk+-3.0')
 gtk_layer_shell = dependency('gtk-layer-shell-0')
 
 pulse = dependency('libpulse')
+mpdclient = dependency('libmpdclient')
 
 
 headers = [
@@ -70,7 +71,7 @@ sources = [
    'src/SNI.cpp',
    ]
 
-dependencies = [gtk, gtk_layer_shell, pulse, wayland_client]
+dependencies = [gtk, gtk_layer_shell, pulse, wayland_client, mpdclient]
 
 if get_option('WithHyprland')
   add_global_arguments('-DWITH_HYPRLAND', language: 'cpp')
